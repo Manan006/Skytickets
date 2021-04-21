@@ -1,0 +1,24 @@
+[build-system]
+build-backend = "poetry.masonry.api"
+requires = ["poetry>=0.12"]
+
+[tool]
+[tool.poetry]
+authors = ["Your Name <you@example.com>"]
+description = "Skyblock Services official ticket bot!"
+name = "SkyTicket-Services"
+version = "0.1.0"
+[tool.poetry.dependencies]
+api = "^0.0.7"
+"discord.py" = "^1.6.0"
+emoji = "^1.1.0"
+flask = "^1.1.2"
+grapheme = "^0.6.0"
+mysql-connector = "^2.2.9"
+numerize = "^0.12"
+passlib = "^1.7.4"
+python = "^3.8"
+python-dotenv = "^0.15.0"
+pytz = "^2020.5"
+sklearn = "^0.0"
+[tool.poetry.dev-dependencies]
