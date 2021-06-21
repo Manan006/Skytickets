@@ -1,0 +1,10 @@
+tcp_latency
+passlib
+hashlib
+mysql-connector
+python-dotenv
+asyncio
+discord
+requests
+numerize
+flask
