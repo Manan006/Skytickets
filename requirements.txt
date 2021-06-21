@@ -7,3 +7,4 @@ discord
 requests
 numerize
 flask
+chat_exporter
