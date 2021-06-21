@@ -8,3 +8,4 @@ requests
 numerize
 flask
 chat_exporter
+scikit-learn
