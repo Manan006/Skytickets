@@ -2,7 +2,7 @@ myguild_id = 721318863433629707  # guild id
 
 footer = "Skyblock Services"  # footer for embeds
 guild_name = "Skyblock Services"  # name of the guild
-transcript_channel = 801908044287836200  # the channel to post transcripts to
+transcript_channel = 901707141365264384  # the channel to post transcripts to
 ticket_inactivity_close_time = 345600  # in seconds
 # role id of the general role given to experts
 expert_role_id = 784539526944260116

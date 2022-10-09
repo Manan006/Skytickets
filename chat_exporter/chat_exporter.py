@@ -29,19 +29,7 @@ async def last_file_save(_file):
 
 async def export(channel_):
 		# noinspection PyBroadException
-		try:
-				transcript = await produce_transcript(channel_)
-		except Exception:
-				transcript = None
-				print("Error during transcript generation!", file=sys.stderr)
-				traceback.print_exc()
-				error_embed = discord.Embed(
-						title="Transcript Generation Failed!",
-						description="Whoops! We've stumbled in to an issue here.",
-						colour=discord.Colour.red()
-				)
-				print(f"Please send a screenshot of the above error to https://www.github.com/mahtoid/DiscordChatExporterPy")
-				return None
+		return await produce_transcript(channel_)
 
 		if transcript is not None:
 				path=os.getenv('path')
@@ -70,13 +58,13 @@ async def generate_transcript(channel):
 
 async def produce_transcript(channel):
 		guild = channel.guild
-		messages = await channel.history(limit=None, oldest_first=True).flatten()
+		messages = [message async for message in channel.history(limit=None, oldest_first=True)]
 		previous_author = 0
 		previous_timestamp = ""
 		messages_html = ""
 		for m in messages:
 				time_format = "%b %d, %Y %I:%M %p"
-				time_string = utc.localize(m.created_at).astimezone(eastern)
+				time_string = m.created_at
 				time_string_created = time_string.strftime(time_format)
 				if m.edited_at is not None:
 						time_string_edited = utc.localize(m.edited_at).astimezone(eastern)
@@ -109,30 +97,30 @@ async def produce_transcript(channel):
 						# default values for embeds need explicit setting because
 						# Embed.empty breaks just about everything
 						title = e.title \
-								if e.title != discord.Embed.Empty \
+								if e.title != None \
 								else ""
 						r, g, b = (e.colour.r, e.colour.g, e.colour.b) \
-								if e.colour != discord.Embed.Empty \
+								if e.colour != None \
 								else (0x20, 0x22, 0x25)  # default colour
 						desc = e.description \
-								if e.description != discord.Embed.Empty \
+								if e.description != None \
 								else ""
 						author = e.author.name \
-								if e.author.name != discord.Embed.Empty \
+								if e.author.name != None \
 								else ""
 						footer = e.footer.text \
-								if e.footer.text != discord.Embed.Empty \
+								if e.footer.text != None \
 								else ""
-						footer_icon = e.footer.icon_url \
-								if e.footer.icon_url != discord.Embed.Empty \
+						footer_icon = e.footer.icon \
+								if e.footer.icon != None \
 								else None
 
 						thumbnail = e.thumbnail.url \
-								if e.thumbnail.url != discord.Embed.Empty \
+								if e.thumbnail.url != None \
 								else ""
 
 						image = e.image.url \
-								if e.image.url != discord.Embed.Empty \
+								if e.image.url != None \
 								else ""
 
 						if image != "":
@@ -264,7 +252,7 @@ async def produce_transcript(channel):
 
 				if previous_author == m.author.id and previous_timestamp > time_string:
 						cur_msg = await fill_out(channel, continue_message, [
-								("AVATAR_URL", str(m.author.avatar_url)),
+								("avatar", str(m.author.avatar)),
 								("NAME_TAG", "%s#%s" % (m.author.name, m.author.discriminator)),
 								("USER_ID", str(m.author.id)),
 								("NAME", str(author_name)),
@@ -286,7 +274,7 @@ async def produce_transcript(channel):
 						if previous_author != 0 and previous_timestamp != "":
 								cur_msg = await fill_out(channel, end_message, [])
 						cur_msg += await fill_out(channel, msg, [
-								("AVATAR_URL", str(m.author.avatar_url)),
+								("avatar", str(m.author.avatar)),
 								("NAME_TAG", "%s#%s" % (m.author.name, m.author.discriminator)),
 								("USER_ID", str(m.author.id)),
 								("USER_COLOUR", user_colour),
@@ -304,13 +292,13 @@ async def produce_transcript(channel):
 
 				messages_html += cur_msg
 
-		guild_icon = guild.icon_url
+		guild_icon = guild.icon
 		if len(guild_icon) < 2:
 				guild_icon = "https://discord.com/assets/dd4dbc0016779df1378e7812eabaa04d.png"
 		guild_name = await escape_html(guild.name)
 		transcript = await fill_out(channel, total, [
 				("SERVER_NAME", f"Guild: {guild_name}"),
-				("SERVER_AVATAR_URL", str(guild_icon), PARSE_MODE_NONE),
+				("SERVER_avatar", str(guild_icon), PARSE_MODE_NONE),
 				("CHANNEL_NAME", f"Channel: {channel.name}"),
 				("MESSAGE_COUNT", str(len(messages))),
 				("MESSAGES", messages_html, PARSE_MODE_NONE),
