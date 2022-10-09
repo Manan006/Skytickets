@@ -275,6 +275,19 @@ async def on_raw_reaction_add(payload):
             await dm.send(embed=embed)
             return
         database_info = Cursor.execute(prepare, return_fetchall=True)[0]
+        hypixel_verified=discord.utils.get(guild.roles, id=979541904507162634)
+        if hypixel_verified not in member.roles and database_info[0].lower() != "support":
+            dm = await member.create_dm()
+            embed = discord.Embed(
+                title="Hypixel Verification",
+                description=
+                f"You are not verified on Hypixel and hence cannot create the ticket.\nPlease verify via <#1025465497266962472>",
+                color=0xFF2121,
+                timestamp=datetime.datetime.now(datetime.timezone.utc),
+            )
+            embed.set_footer(text=footer)
+            await dm.send(embed=embed)
+            return
         prepare = f"SELECT * FROM `Tickets` WHERE `user_id`='{member.id}' and `category`='{database_info[4]}' and `is_closed`='0'"
         previous_ticket = Cursor.execute(prepare, return_fetchall=True)
         if len(previous_ticket) > 0:
@@ -305,8 +318,8 @@ async def on_raw_reaction_add(payload):
             role = discord.utils.get(guild.roles,id=ticket_experts_id[role_id])
 
         ticket = await guild.create_text_channel(channel_to_be_created,
-                                                 category=category,
-                                                 sync_permissions=True)
+                                                 category=category)
+        await ticket.edit(sync_permissions=True)
         if role!=None:
           await ticket.set_permissions(role,send_messages=True,read_messages=True)
         await ticket.set_permissions(member,
@@ -488,7 +501,7 @@ async def open(ctx=None, channel=None, guild=None, member=None):
 
 
 async def get_users(channel):
-    messages = await channel.history(limit=200).flatten()
+    messages = [message async for message in channel.history(limit=200)]
     users = []
     for message in messages:
         if str(message.author.id) not in users and message.author.bot == False:
@@ -559,7 +572,7 @@ async def rename(ctx):
             timestamp=datetime.datetime.now(datetime.timezone.utc),
         )
         embed.set_footer(text=footer)
-        embed.set_author(name=member, icon_url=member.avatar_url)
+        embed.set_author(name=member, icon_url=member.avatar)
         await channel.send(embed=embed)
 
 
@@ -588,64 +601,56 @@ async def transcript(ctx=None,member=None,channel=None,guild=None,action="Transc
         "Compiling the transcript, please wait upto 10 seconds <a:windowsloadingsbs:783051854413955072>"
     )
 
+    file = await chat_exporter.export(channel)
+    with openfile_(channel.name+".htm", "w") as f:
+        f.write(file)
+    file = discord.File(channel.name+".htm")
+    # transcript_saved = False
+    # if file == None:
+    #     embed = discord.Embed(
+    #         title="Transcript Error!",
+    #         description=
+    #         "Well, this is akward but I got an error while compiling the transcript......\nTime to call the pest control to get rid of bugs :cockroach::cockroach: ",
+    #         color=0xFF2121,
+    #     )
+    #     await channel.send(embed=embed)
+    #     await transcript_log(embed=embed)
+    await transcript_log(file=file)
+    owner_id = database_info[0]
     try:
-        file = await chat_exporter.export(channel)
+        owner = await bot.fetch_user(int(owner_id))
     except:
-        file = None
-    transcript_saved = False
-    if file == None:
-        embed = discord.Embed(
-            title="Transcript Error!",
-            description=
-            "Well, this is akward but I got an error while compiling the transcript......\nTime to call the pest control to get rid of bugs :cockroach::cockroach: ",
-            color=0xFF2121,
-        )
-        await channel.send(embed=embed)
-        await transcript_log(embed=embed)
-    else:
-        transcript_saved = True
-        await transcript_log(file=file)
-        file.reset()
-        owner_id = database_info[0]
+        owner = None
+    if dm_people:
         try:
-            owner = await bot.fetch_user(int(owner_id))
+            dm_owner = await owner.create_dm()
+            await dm_owner.send(file=file)
         except:
-            owner = None
-        if dm_people:
-            try:
-                dm_owner = await owner.create_dm()
-                await dm_owner.send(file=file)
-            except:
-                dm = None
-        file = await chat_exporter.export(channel)
-        await channel.send(file=file)
+            dm = None
+    await channel.send(file=discord.File(channel.name+".htm"))
+    try:
+        await pls_wait.delete()
+    except:
+        pass
+    if member != owner and dm_people == True:
         try:
-          await pls_wait.delete()
+            dm_member = await member.create_dm()
+            await dm_member.send(file=discord.File(channel.name+".htm"))
         except:
-          pass
-        file.reset()
-        if member != owner and dm_people == True:
-            try:
-                dm_member = await member.create_dm()
-                await dm_member.send(file=file)
-            except:
-                dm = None
-        embed = discord.Embed(
-            title="Transcript Saved!",
-            description=
-            "Transcript has been successfully compiled.\nHere's some information about the ticket I gathered",
-            color=0x2FFF70,
-        )
-        await channel.send(embed=embed)
+            dm = None
+    embed = discord.Embed(
+        title="Transcript Saved!",
+        description=
+        "Transcript has been successfully compiled.\nHere's some information about the ticket I gathered",
+        color=0x2FFF70,
+    )
+    await channel.send(embed=embed)
     actions = {
         "Transcript Saved": 0x2FFF70,
         "Ticket Closed": 0xFFD600,
         "Ticket being Deleted": 0xFF0D00,
     }
     color = actions[action]
-    if transcript_saved == False and action == "Transcript Saved":
-        action = "Transcript Not saved!"
-        color = 0xFF0D00
     embed = await ticket_info_embed(
         action=action,
         color=color,
@@ -682,7 +687,7 @@ async def ticket_info_embed(action, color, database_info, channel, member,owner,
     else:
         experts = "None"
     try:
-        embed.set_author(name=owner, icon_url=owner.avatar_url)
+        embed.set_author(name=owner, icon_url=owner.avatar)
     except:
         embed.set_author(name="Ticket Owner not found...")
          
@@ -1468,7 +1473,7 @@ async def panel_add(ctx):
     channel = ctx.channel
     content = ctx.content
 
-    with channel.typing():
+    async with channel.typing():
         await asyncio.sleep(1)
         await channel.send(
             "So you wanna create a new panel <:SBS_yawn:809248209121574933>.   Say **cancel** if you want to cancel"
@@ -1496,7 +1501,7 @@ async def panel_add(ctx):
     name = msg.content
     if await is_cancelled(name):
         return
-    with channel.typing():
+    async with channel.typing():
         await asyncio.sleep(1)
         await channel.send(
             f"Okey! the name will be set to **{name}** <:rooBigMoney:809260048294608918>\n\nWhat should be the prefix of the ticket?\nFor eaxmple, for **bit-009** say **bit**"
@@ -1509,7 +1514,7 @@ async def panel_add(ctx):
     ticket_prefix = msg.content
     if await is_cancelled(ticket_prefix):
         return
-    with channel.typing():
+    async with channel.typing():
         await asyncio.sleep(1)
         await channel.send(
             f"Yes, the prefix will be set to **{ticket_prefix}**\nNow tell me the Id of the category in which the tickets should be made?right click the category and select copy id, also make sure to set the category permissions <:SBS_sharkHi:809244998679134269>"
@@ -1526,7 +1531,7 @@ async def panel_add(ctx):
     if (ticket_category) < 1:
         await channel.send("Invalid category")
         return
-    with channel.typing():
+    async with channel.typing():
         await asyncio.sleep(1)
         await channel.send(
             f"Hmm..... the category will be set to **{await get_category(int(ticket_category))}**\n\nSo which channel should I send the ticket creation message? mention it or type name plz :pleading_face:"
@@ -1549,7 +1554,7 @@ async def panel_add(ctx):
       if ticket_channel == None:
           await channel.send("Invalid channel")
           return
-    with channel.typing():
+    async with channel.typing():
         await asyncio.sleep(1)
         await channel.send(
             file=discord.File("ticket_msg.png"),
@@ -1569,7 +1574,7 @@ async def panel_add(ctx):
         send_text = "default"
     else:
         send_text = msg_text
-    with channel.typing():
+    async with channel.typing():
         await asyncio.sleep(1)
         stuff=f"ahh yes! the msg text has been set to {send_text}, gimme a second to compile everything"
         uwu=await channel.send(stuff.replace("@","")
@@ -1726,7 +1731,7 @@ async def panel_edit(ctx):
     def check(message):
         return message.channel == channel and message.author == member
 
-    with channel.typing():
+    async with channel.typing():
         await asyncio.sleep(1)
         await channel.send(
             "Oh so you want to edit a Panel <:SBS_peepoG:804884379650228244>\nBtw you can **cancel** to cancel this process"
@@ -1749,7 +1754,7 @@ async def panel_edit(ctx):
         await channel.send(f"There is no Panel with a name of {name}")
         return
     panel_name=panel_name[0][0]
-    with channel.typing():
+    async with channel.typing():
         await asyncio.sleep(1)
         await channel.send(
             f"So the panel is **{panel_name}**, What attribute you wanna modify?\n*{prefix}panel-help* <a:Rainbow_Blob_TrashSBS:809246883423322113>"
@@ -1781,7 +1786,7 @@ async def panel_edit(ctx):
             f"Thats not a valid attribute <a:dogebonkSBS:809244948075118643> !\nDo **{prefix}panel-help** to see a list of attributes"
         )
         return
-    with channel.typing():
+    async with channel.typing():
         await asyncio.sleep(1)
         await channel.send(
             f"Okey thats a valid attribute(or alias) <a:hypeSBS:783053625021694012>, What should be the new value be?"
@@ -1793,7 +1798,8 @@ async def panel_edit(ctx):
         return
     if await is_cancelled(msg.content):
         return
-    new_value = msg.content.lower()
+    new_value = msg.content
+    print(new_value)
     await channel.send(
         "Are you sure that you want to do this change? Say `confirm` to confirm or `cancel` to cancel"
     )
