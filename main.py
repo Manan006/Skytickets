@@ -1329,7 +1329,7 @@ async def help(ctx):
         embed = discord.Embed(
             title="Here's the utility commands",
             description=
-            f"**`{prefix}verify`** - verify with your ign\n**`{prefix}ign <optional - user Id or mention>`** - Shows the person's ign, will show yours if sent wihout optional argument\n**`{prefix}pet-calc`** - Inbuilt Pet calculator for Pet levelling\n**`{prefix}ping`** - see the bot's ping (updated every few mins)\n**`{prefix}ticket-msg`** - see the bot's default ticket msg\n**`{prefix}about`** - about",
+            f"**`{prefix}verify`** - verify with your ign\n**`{prefix}ign <optional - user Id or mention>`** - Shows the person's ign, will show yours if sent wihout optional argument\n**`{prefix}pet-calc`** - Inbuilt Pet calculator for Pet levelling\n**`{prefix}ping`** - see the bot's ping (updated every few mins)\n**`{prefix}ticket-msg`** - see the bot's default ticket msg\n**`{prefix}eventping`** - Ping the events role\n**`{prefix}about`** - about",
             timestamp=datetime.datetime.now(datetime.timezone.utc),color=default_embed_color
         )
 
@@ -2195,11 +2195,19 @@ async def on_message(ctx):
             "pet-calc": pet_calc,
             "pet":pet_calc,
             "ticket-msg": send_default_ticket_msg,
-            "about":about
+            "about":about,
+            "eventping":eventping
         }
         command = commands.get(content[len(prefix):].split()[0])
         if command != None:
             await command(ctx=ctx)
+
+async def eventping(ctx):
+  event_manager=discord.utils.get(ctx.guild.roles, id=1026195273149587568)
+  if event_manager not in ctx.author.roles:
+    await ctx.channel.send("You do not have the permissions required for this command.")
+  else:
+    await ctx.channel.send("<@&980385233360785498>")
 
 
 @bot.event
